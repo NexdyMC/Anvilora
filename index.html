@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minecraft 1.16.1 Instant World Save Generator</title>
+  <meta name="description" content="Generate and download authentic Minecraft Java 1.16.1 world save files (.zip) instantly in your browser.">
+  
+  <!-- Google Fonts: Press Start 2P for authentic Minecraft pixel aesthetics -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- External Libraries (CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+  <!-- Dirt background & dark vignette overlay container -->
+  <div class="mc-vignette-overlay"></div>
+
+  <main class="mc-container" role="main">
+    <!-- Header Title -->
+    <header class="mc-header">
+      <h1 class="mc-title">Create New World</h1>
+    </header>
+
+    <form id="worldForm" class="mc-form" onsubmit="return false;">
+      
+      <!-- Section: World Name -->
+      <div class="form-group">
+        <label for="worldName" class="mc-label">World Name</label>
+        <div class="mc-input-wrapper">
+          <input 
+            type="text" 
+            id="worldName" 
+            name="worldName" 
+            class="mc-input" 
+            value="New World" 
+            maxlength="40" 
+            autocomplete="off" 
+            spellcheck="false"
+            required
+          />
+        </div>
+        <p class="mc-helper" id="saveLocationHelper">
+          Will be saved in: <span class="highlight-text" id="saveFolderName">saves/New World</span>
+        </p>
+      </div>
+
+      <!-- Section: Game Mode & Difficulty (2-column on desktop, stacked on mobile) -->
+      <div class="form-row">
+        <!-- Game Mode Toggle Button -->
+        <div class="form-col">
+          <button type="button" id="btnGameMode" class="mc-btn mc-btn-toggle" aria-label="Toggle Game Mode">
+            Game Mode: <span id="gameModeText">Survival</span>
+          </button>
+          <p class="mc-helper-desc" id="gameModeDesc">
+            Search for resources, crafting, gain levels, health and hunger.
+          </p>
+        </div>
+
+        <!-- Difficulty Toggle Button -->
+        <div class="form-col">
+          <button type="button" id="btnDifficulty" class="mc-btn mc-btn-toggle" aria-label="Toggle Difficulty">
+            Difficulty: <span id="difficultyText">Normal</span>
+          </button>
+          <p class="mc-helper-desc" id="difficultyDesc">
+            Standard survival, monsters spawn, starvation down to 1 HP.
+          </p>
+        </div>
+      </div>
+
+      <!-- Section: Seed Input -->
+      <div class="form-group">
+        <label for="worldSeed" class="mc-label">Seed for the World Generator</label>
+        <div class="mc-input-wrapper">
+          <input 
+            type="text" 
+            id="worldSeed" 
+            name="worldSeed" 
+            class="mc-input" 
+            placeholder="Leave blank for a random seed" 
+            autocomplete="off" 
+            spellcheck="false"
+          />
+        </div>
+        <p class="mc-helper">
+          Leave blank for a random seed, or enter any number/text.
+        </p>
+      </div>
+
+      <!-- Section: Cheats & Structures (2-column on desktop, stacked on mobile) -->
+      <div class="form-row">
+        <!-- Allow Cheats Toggle Button -->
+        <div class="form-col">
+          <button type="button" id="btnCheats" class="mc-btn mc-btn-toggle" aria-label="Toggle Cheats">
+            Allow Cheats: <span id="cheatsText">OFF</span>
+          </button>
+          <p class="mc-helper-desc" id="cheatsDesc">
+            Commands like /gamemode, /tp, /give.
+          </p>
+        </div>
+
+        <!-- Generate Structures Toggle Button -->
+        <div class="form-col">
+          <button type="button" id="btnStructures" class="mc-btn mc-btn-toggle" aria-label="Toggle Generate Structures">
+            Generate Structures: <span id="structuresText">ON</span>
+          </button>
+          <p class="mc-helper-desc" id="structuresDesc">
+            Villages, dungeons, mineshafts, etc.
+          </p>
+        </div>
+      </div>
+
+      <!-- Section: Overworld Terrain Generation -->
+      <div class="form-group">
+        <label class="mc-label">Overworld Terrain (Region .MCA)</label>
+        <button type="button" id="btnTerrain" class="mc-btn mc-btn-toggle" aria-label="Toggle Overworld Terrain">
+          Spawn Terrain: <span id="terrainText">Rolling Plains (Hills 3x3)</span>
+        </button>
+        <p class="mc-helper-desc" id="terrainDesc">
+          3-Octave Perlin noise hills (Y=62..72) with bedrock, stone, dirt &amp; grass.
+        </p>
+      </div>
+
+      <!-- Section: 3D Interactive Chunk & Terrain Preview -->
+      <div class="mc-preview-card" aria-label="3D World Terrain Preview">
+        <div class="mc-preview-header">
+          <div class="mc-preview-title-box">
+            <h2 class="mc-preview-title">
+              <span class="mc-icon">🧊</span> 3D World Terrain Preview (Interactive)
+            </h2>
+            <div id="previewElevation" class="mc-preview-elevation">
+              Spawn: X: 8, Y: 68, Z: 8
+            </div>
+          </div>
+          <div class="mc-preview-actions">
+            <button type="button" id="btnResetCamera" class="mc-btn mc-btn-sm" aria-label="Reset Kamera">
+              Reset Kamera
+            </button>
+            <button type="button" id="btnToggleMeshMode" class="mc-btn mc-btn-sm" aria-label="Mode Tampilan">
+              Mode: <span id="meshModeText">Voxel</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- WebGL Canvas Container with Minecraft Bevel Frame -->
+        <div class="mc-canvas-wrapper" id="canvasWrapper">
+          <canvas id="terrainCanvas"></canvas>
+          <div id="canvasOverlayLoading" class="mc-canvas-overlay hidden">
+            <div class="mc-spinner"></div>
+            <span>Updating 3D Terrain...</span>
+          </div>
+        </div>
+
+        <p class="mc-preview-controls-hint">
+          <span class="mc-hint-icon">🎮</span> Gunakan klik kiri drag untuk rotasi, scroll untuk zoom, klik kanan drag untuk pan
+        </p>
+      </div>
+
+      <!-- Status & Progress Feedback Banner -->
+      <div id="statusBanner" class="mc-status-banner hidden" role="status" aria-live="polite">
+        <div class="mc-spinner"></div>
+        <span id="statusText">Generating NBT & packaging ZIP...</span>
+      </div>
+
+      <!-- Section: Bottom Action Buttons -->
+      <div class="form-actions">
+        <button type="button" id="btnCreateWorld" class="mc-btn mc-btn-action mc-btn-primary">
+          Create &amp; Download World
+        </button>
+        <button type="button" id="btnReset" class="mc-btn mc-btn-action mc-btn-secondary">
+          Reset to Defaults
+        </button>
+      </div>
+    </form>
+
+    <!-- Installation Instructions Accordion / Card -->
+    <section class="mc-instructions-card">
+      <h2 class="mc-instructions-title">
+        <span class="mc-icon">ℹ</span> How to Play in Minecraft 1.16.1
+      </h2>
+      <ol class="mc-instructions-list">
+        <li>Click <strong>"Create &amp; Download World"</strong> to download the <code>.zip</code> save file.</li>
+        <li>Open your Minecraft saves folder:
+          <div class="mc-code-box">
+            <span>Windows:</span> <code>Win + R</code> &rarr; type <code>%appdata%\.minecraft\saves</code> &rarr; <code>Enter</code>
+          </div>
+        </li>
+        <li>Extract the downloaded <code>.zip</code> folder directly into that <code>saves</code> directory.</li>
+        <li>Launch <strong>Minecraft Java 1.16.1</strong>, go to <strong>Singleplayer</strong>, and your world is ready to play!</li>
+      </ol>
+    </section>
+
+    <!-- Footer -->
+    <footer class="mc-footer">
+      <p>Target Game: <strong>Minecraft Java 1.16.1</strong> (DataVersion 2567) &bull; 100% Client-Side</p>
+    </footer>
+  </main>
+
+  <!-- Core Minecraft Binary -->
+  <script src="js/core/seed.js"></script>
+  <script src="js/core/nbt.js"></script>
+  <script src="js/core/anvil.js"></script>
+
+  <!-- World Generation & Math -->
+  <script src="js/generator/noise.js"></script>
+  <script src="js/generator/terrain.js"></script>
+  <script src="js/generator/chunk.js"></script>
+
+  <!-- 3D WebGL Viewer -->
+  <script src="js/viewer/terrain3d.js"></script>
+
+  <!-- Application Logic Orchestrator -->
+  <script src="app.js"></script>
+</body>
+</html>

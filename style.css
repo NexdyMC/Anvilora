@@ -1,0 +1,619 @@
+/* ==========================================================================
+   Minecraft 1.16.1 Instant World Generator - Authentic Stylesheet
+   ========================================================================== */
+
+/* --- Reset & Global Variables --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* --- Custom Local Minecraft Font --- */
+@font-face {
+  font-family: 'Minecraft';
+  src: url('fonts/Minecraft.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --mc-font: 'Minecraft', 'Press Start 2P', monospace;
+  --mc-text-white: #FFFFFF;
+  --mc-text-yellow: #FFFFA0;
+  --mc-text-gray: #A0A0A0;
+  --mc-text-dark-gray: #555555;
+  --mc-text-shadow: 2px 2px 0px #3F3F3F;
+  --mc-text-shadow-muted: 1px 1px 0px #202020;
+  
+  --mc-btn-bg: #4A4A4A;
+  --mc-btn-border-dark: #000000;
+  --mc-btn-bevel-light: #808080;
+  --mc-btn-bevel-dark: #2A2A2A;
+  
+  --mc-input-bg: #000000;
+  --mc-input-border: #A0A0A0;
+  --mc-input-border-focus: #FFFFFF;
+  
+  --mc-container-bg: rgba(0, 0, 0, 0.45);
+}
+
+/* --- Document Body with Dirt Texture & Vignette --- */
+html, body {
+  min-height: 100%;
+  width: 100%;
+  font-family: var(--mc-font);
+  color: var(--mc-text-white);
+  line-height: 1.5;
+  background-color: #493322;
+}
+
+/* Seamless authentic 16x16 Minecraft Dirt block SVG pattern */
+body {
+  background-image: 
+    radial-gradient(circle at center, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.88) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 16 16'%3E%3Cpath fill='%23866043' d='M0 0h16v16H0z'/%3E%3Cpath fill='%23603B1F' d='M0 0h2v1H1v2H0zm5 0h2v1H5zm6 0h1v1h1v1h-2zm-3 2h2v1H8zm5 0h2v1h-1v1h-1zm-9 1h1v1H4zm3 0h1v1H7zm5 1h1v1h-1zm-9 1h2v1H3zm7 0h1v2h-1zm-6 2h1v1H4zm3 0h1v1H7zm7 0h1v1h-1zm-9 1h1v1H5zm6 0h1v1h-1zm-9 1h2v1H2zm4 0h1v1H6zm4 0h1v1h-1zm4 0h1v1h-1zm-9 2h1v1H5zm6 0h1v1h-1zm-9 1h2v1H2zm5 0h2v1H7zm6 0h1v1h-1z'/%3E%3Cpath fill='%234A2D13' d='M2 1h1v1H2zm7 0h1v1H9zm-6 2h1v1H3zm6 0h1v1H9zm-7 2h1v1H2zm7 0h2v1H9zm4 0h1v1h-1zm-9 2h1v1H4zm8 0h1v1h-1zm-5 1h1v1H7zm5 1h1v1h-1zm-8 2h1v1H4zm4 0h1v1H8zm-6 2h1v1H2zm7 0h1v1H9zm4 0h1v1h-1z'/%3E%3Cpath fill='%239E7553' d='M3 0h1v1H3zm7 0h1v1h-1zm3 0h1v1h-1zm-9 2h1v1H4zm6 0h1v1h-1zm-8 2h1v1H2zm6 0h1v1H8zm4 0h1v1h-1zm-7 2h1v1H5zm7 0h1v1h-1zm-9 1h1v1H3zm6 0h1v1H9zm-5 2h1v1H4zm7 0h1v1h-1zm-7 2h1v1H4zm8 0h1v1h-1z'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-attachment: fixed;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 30px 16px;
+  overflow-y: auto;
+}
+
+/* Subtle extra edge vignette overlay */
+.mc-vignette-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* --- Main Layout Container --- */
+.mc-container {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 680px;
+  background: var(--mc-container-bg);
+  border: 2px solid #202020;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.7);
+  padding: 28px 24px;
+}
+
+/* --- Title & Headers --- */
+.mc-header {
+  text-align: center;
+  margin-bottom: 26px;
+}
+
+.mc-title {
+  font-size: 28px;
+  color: var(--mc-text-white);
+  text-shadow: var(--mc-text-shadow);
+  letter-spacing: 1px;
+}
+
+/* --- Form Groups & Input Fields --- */
+.mc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mc-label {
+  font-size: 14px;
+  color: var(--mc-text-gray);
+  text-shadow: var(--mc-text-shadow-muted);
+  line-height: 1.4;
+  letter-spacing: 0.5px;
+}
+
+.mc-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.mc-input {
+  width: 100%;
+  height: 44px;
+  padding: 10px 14px;
+  font-family: var(--mc-font);
+  font-size: 15px;
+  color: var(--mc-text-white);
+  text-shadow: var(--mc-text-shadow);
+  background-color: var(--mc-input-bg);
+  border: 2px solid var(--mc-input-border);
+  outline: none;
+  border-radius: 0;
+  box-sizing: border-box;
+  letter-spacing: 0.5px;
+  transition: border-color 0.15s ease;
+}
+
+.mc-input:focus {
+  border-color: var(--mc-input-border-focus);
+  box-shadow: 0 0 0 1px #000000;
+}
+
+.mc-input::placeholder {
+  color: #666666;
+  text-shadow: 1px 1px 0px #111111;
+}
+
+.mc-helper {
+  font-size: 12px;
+  color: var(--mc-text-gray);
+  text-shadow: var(--mc-text-shadow-muted);
+  line-height: 1.5;
+  margin-top: 3px;
+  word-break: break-all;
+}
+
+.mc-helper-desc {
+  font-size: 12px;
+  color: var(--mc-text-gray);
+  text-shadow: var(--mc-text-shadow-muted);
+  line-height: 1.5;
+  margin-top: 5px;
+  min-height: 28px;
+}
+
+.highlight-text {
+  color: var(--mc-text-yellow);
+  text-shadow: var(--mc-text-shadow);
+}
+
+/* --- 2-Column Row Layout --- */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-col {
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Authentic Minecraft 3D Bevel Buttons --- */
+.mc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 44px;
+  padding: 6px 14px;
+  font-family: var(--mc-font);
+  font-size: 15px;
+  color: #E0E0E0;
+  text-shadow: var(--mc-text-shadow);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  border: 2px solid var(--mc-btn-border-dark);
+  border-radius: 0;
+  background-color: var(--mc-btn-bg);
+  background-image: linear-gradient(to bottom, #545454 0%, #444444 100%);
+  box-shadow: 
+    inset 2px 2px 0px var(--mc-btn-bevel-light), 
+    inset -2px -2px 0px var(--mc-btn-bevel-dark);
+  letter-spacing: 0.5px;
+  transition: all 0.08s ease;
+}
+
+/* Button Hover State */
+.mc-btn:hover {
+  color: var(--mc-text-yellow);
+  background-color: #555555;
+  background-image: linear-gradient(to bottom, #606060 0%, #4c4c4c 100%);
+  box-shadow: 
+    inset 2px 2px 0px #FFFFFF, 
+    inset -2px -2px 0px #1A1A1A;
+}
+
+/* Button Active / Pressed State */
+.mc-btn:active {
+  background-color: #383838;
+  background-image: linear-gradient(to bottom, #323232 0%, #3a3a3a 100%);
+  box-shadow: 
+    inset 2px 2px 0px #1A1A1A, 
+    inset -2px -2px 0px var(--mc-btn-bevel-light);
+  transform: translateY(1px);
+}
+
+/* Toggle Buttons */
+.mc-btn-toggle {
+  line-height: 1.3;
+}
+
+.mc-btn-toggle span {
+  margin-left: 4px;
+}
+
+/* --- Bottom Action Buttons --- */
+.form-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.mc-btn-primary {
+  color: #FFFFFF;
+  background-color: #3B6B35;
+  background-image: linear-gradient(to bottom, #4A8542 0%, #30582B 100%);
+  box-shadow: 
+    inset 2px 2px 0px #6DAE63, 
+    inset -2px -2px 0px #1E371B;
+}
+
+.mc-btn-primary:hover {
+  color: #FFFF90;
+  background-image: linear-gradient(to bottom, #589A4F 0%, #3A6A34 100%);
+  box-shadow: 
+    inset 2px 2px 0px #FFFFFF, 
+    inset -2px -2px 0px #132411;
+}
+
+.mc-btn-primary:active {
+  background-image: linear-gradient(to bottom, #254421 0%, #30582B 100%);
+  box-shadow: 
+    inset 2px 2px 0px #132411, 
+    inset -2px -2px 0px #6DAE63;
+}
+
+.mc-btn-secondary {
+  color: #D0D0D0;
+}
+
+/* --- 3D Interactive Chunk & Terrain Preview Card --- */
+.mc-preview-card {
+  margin-top: 8px;
+  margin-bottom: 6px;
+  background-color: rgba(18, 18, 18, 0.9);
+  border: 2px solid #3A3A3A;
+  box-shadow: inset 1px 1px 0px #505050, inset -1px -1px 0px #1A1A1A;
+  padding: 14px;
+}
+
+.mc-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.mc-preview-title-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mc-preview-title {
+  font-size: 14px;
+  color: var(--mc-text-yellow);
+  text-shadow: var(--mc-text-shadow);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.5px;
+}
+
+.mc-preview-elevation {
+  font-size: 12px;
+  color: #55FFFF;
+  text-shadow: var(--mc-text-shadow-muted);
+  letter-spacing: 0.5px;
+}
+
+.mc-preview-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mc-btn-sm {
+  width: auto;
+  height: 34px;
+  padding: 4px 12px;
+  font-size: 12px;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+/* 3D WebGL Canvas Wrapper with Minecraft Bevel Frame */
+.mc-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 320px;
+  background-color: #121212;
+  border: 2px solid #000000;
+  box-shadow: 
+    inset 2px 2px 0px #3F3F3F, 
+    inset -2px -2px 0px #151515;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.mc-canvas-wrapper:active {
+  cursor: grabbing;
+}
+
+#terrainCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+.mc-canvas-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--mc-text-yellow);
+  text-shadow: var(--mc-text-shadow);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.mc-preview-controls-hint {
+  font-size: 11.5px;
+  color: var(--mc-text-gray);
+  text-shadow: var(--mc-text-shadow-muted);
+  margin-top: 10px;
+  text-align: center;
+  line-height: 1.5;
+  letter-spacing: 0.3px;
+}
+
+.mc-hint-icon {
+  margin-right: 4px;
+}
+
+/* --- Status & Progress Banner --- */
+.mc-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background-color: #1A1A1A;
+  border: 2px solid #555555;
+  color: var(--mc-text-yellow);
+  text-shadow: var(--mc-text-shadow);
+  font-size: 12px;
+  margin-top: 6px;
+  letter-spacing: 0.5px;
+}
+
+.mc-status-banner.hidden {
+  display: none;
+}
+
+.mc-status-banner.success {
+  background-color: #172E15;
+  border-color: #4A8542;
+  color: #98FF85;
+}
+
+.mc-status-banner.error {
+  background-color: #3A1212;
+  border-color: #A33333;
+  color: #FFA5A5;
+}
+
+/* Simple Pixel Spinner */
+.mc-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #555555;
+  border-top-color: var(--mc-text-yellow);
+  animation: mc-spin 0.8s steps(8) infinite;
+}
+
+@keyframes mc-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- Installation Instructions Card --- */
+.mc-instructions-card {
+  margin-top: 26px;
+  padding: 18px 16px;
+  background-color: rgba(20, 20, 20, 0.85);
+  border: 2px solid #3A3A3A;
+  box-shadow: inset 1px 1px 0px #505050, inset -1px -1px 0px #1A1A1A;
+}
+
+.mc-instructions-title {
+  font-size: 13.5px;
+  color: var(--mc-text-yellow);
+  text-shadow: var(--mc-text-shadow);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.5px;
+}
+
+.mc-icon {
+  color: #55FFFF;
+}
+
+.mc-instructions-list {
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+  color: #D0D0D0;
+  line-height: 1.6;
+  text-shadow: var(--mc-text-shadow-muted);
+}
+
+.mc-instructions-list li {
+  padding-left: 4px;
+}
+
+.mc-instructions-list strong {
+  color: var(--mc-text-white);
+}
+
+.mc-instructions-list code {
+  background-color: #000000;
+  border: 1px solid #555555;
+  padding: 2px 6px;
+  color: #FFFF55;
+  font-family: var(--mc-font);
+  font-size: 11.5px;
+}
+
+.mc-code-box {
+  margin-top: 6px;
+  background-color: #0c0c0c;
+  border: 1px solid #444444;
+  padding: 6px 10px;
+  display: inline-block;
+  color: #AAAAAA;
+  font-size: 11.5px;
+}
+
+/* --- Footer --- */
+.mc-footer {
+  margin-top: 22px;
+  text-align: center;
+  font-size: 11px;
+  color: #777777;
+  text-shadow: 1px 1px 0px #101010;
+  line-height: 1.6;
+}
+
+.mc-footer strong {
+  color: #AAAAAA;
+}
+
+/* ==========================================================================
+   Responsive Adaptations (Tablet & Mobile Screens)
+   ========================================================================== */
+
+/* Tablet & Mobile Screens (<= 640px) */
+@media screen and (max-width: 640px) {
+  body {
+    padding: 16px 10px;
+  }
+
+  .mc-container {
+    padding: 20px 14px;
+  }
+
+  .mc-title {
+    font-size: 22px;
+  }
+
+  /* Stack 2-column rows vertically for easy mobile tapping */
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .form-actions {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .mc-btn {
+    height: 46px; /* Larger tap targets for mobile fingers */
+    font-size: 14px;
+  }
+
+  .mc-helper-desc {
+    min-height: auto;
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+
+  .mc-input {
+    height: 44px;
+    font-size: 14px;
+  }
+
+  .mc-instructions-card {
+    padding: 14px 12px;
+  }
+
+  .mc-preview-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mc-preview-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .mc-canvas-wrapper {
+    height: 250px;
+  }
+
+  .mc-instructions-list {
+    padding-left: 16px;
+    font-size: 11px;
+  }
+
+  .mc-code-box {
+    display: block;
+    word-break: break-all;
+    margin-top: 6px;
+    font-size: 11px;
+  }
+}
+
+/* Very Small Mobile Screens (<= 380px) */
+@media screen and (max-width: 380px) {
+  .mc-title {
+    font-size: 18px;
+  }
+
+  .mc-btn {
+    font-size: 12.5px;
+    padding: 4px 8px;
+  }
+
+  .mc-label {
+    font-size: 12px;
+  }
+
+  .mc-helper, .mc-helper-desc {
+    font-size: 10px;
+  }
+}

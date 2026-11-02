@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "prismarine-viewer": "^1.33.0"
+  },
+  "devDependencies": {
+    "jest": "^30.5.2"
+  },
+  "allowScripts": {
+    "@parcel/watcher@2.6.0": true
+  }
+}
