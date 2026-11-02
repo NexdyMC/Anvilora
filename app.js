@@ -19,6 +19,8 @@
     worldName: document.getElementById('worldName'),
     saveFolderName: document.getElementById('saveFolderName'),
     worldSeed: document.getElementById('worldSeed'),
+    btnRandomSeed: document.getElementById('btnRandomSeed'),
+    seedHelperText: document.getElementById('seedHelperText'),
 
     btnGameMode: document.getElementById('btnGameMode'),
     gameModeText: document.getElementById('gameModeText'),
@@ -46,6 +48,8 @@
     btnResetCamera: document.getElementById('btnResetCamera'),
     btnToggleMeshMode: document.getElementById('btnToggleMeshMode'),
     meshModeText: document.getElementById('meshModeText'),
+    btnToggleXRay: document.getElementById('btnToggleXRay'),
+    xrayText: document.getElementById('xrayText'),
     previewElevation: document.getElementById('previewElevation'),
     canvasOverlayLoading: document.getElementById('canvasOverlayLoading'),
 
@@ -240,12 +244,66 @@
     updateStructuresUI();
   });
 
+  const handleSeedChange = () => {
+    if (terrainViewer) terrainViewer.updateTerrain();
+  };
+
   DOM.worldSeed.addEventListener('input', () => {
     clearTimeout(seedDebounceTimer);
-    seedDebounceTimer = setTimeout(() => {
-      if (terrainViewer) terrainViewer.updateTerrain();
-    }, 200);
+    seedDebounceTimer = setTimeout(handleSeedChange, 150);
   });
+
+  DOM.worldSeed.addEventListener('change', () => {
+    clearTimeout(seedDebounceTimer);
+    handleSeedChange();
+  });
+
+  // Curated seeds with distinctive biomes & terrain features
+  const CURATED_SEEDS = [
+    { seed: '8675309', label: 'Rolling Meadow & Oak Forest' },
+    { seed: '-123456789012345678', label: 'Mountain Peaks & Valleys' },
+    { seed: '1908432578', label: 'Desert Oasis & Cacti Dunes' },
+    { seed: '-4321987654321', label: 'Emerald Birch Woodlands' },
+    { seed: '9876543210', label: 'Pine Taiga Highlands' },
+    { seed: '202011161', label: 'Minecraft 1.16.1 Classic' },
+    { seed: '1357924680', label: 'Plains River Crossings' },
+    { seed: '-89123476512', label: 'Highland Mountain Ridge' }
+  ];
+
+  if (DOM.btnRandomSeed) {
+    DOM.btnRandomSeed.addEventListener('click', () => {
+      // Trigger dice spin animation
+      DOM.btnRandomSeed.classList.add('rolling');
+      setTimeout(() => DOM.btnRandomSeed.classList.remove('rolling'), 350);
+
+      let seedStr = '';
+      let seedLabel = '';
+
+      // 40% chance pick curated, 60% chance true 64-bit random signed integer
+      if (Math.random() < 0.45) {
+        const pick = CURATED_SEEDS[Math.floor(Math.random() * CURATED_SEEDS.length)];
+        seedStr = pick.seed;
+        seedLabel = pick.label;
+      } else {
+        // Authentic 64-bit signed integer for Minecraft Java Edition
+        const high = BigInt(Math.floor(Math.random() * 0xFFFFFFFF)) - 0x80000000n;
+        const low = BigInt(Math.floor(Math.random() * 0xFFFFFFFF));
+        const val = BigInt.asIntN(64, (high << 32n) | low);
+        seedStr = val.toString();
+        seedLabel = 'Random 64-bit Seed';
+      }
+
+      DOM.worldSeed.value = seedStr;
+
+      if (DOM.seedHelperText) {
+        DOM.seedHelperText.innerHTML = `🎲 Seed: <span class="highlight-text">${seedLabel}</span> (${seedStr})`;
+      }
+
+      // Immediately regenerate 3D terrain preview without debounce delay
+      clearTimeout(seedDebounceTimer);
+      handleSeedChange();
+    });
+  }
 
   if (DOM.btnTerrain) {
     DOM.btnTerrain.addEventListener('click', () => {
@@ -269,6 +327,9 @@
     updateCheatsUI();
     updateStructuresUI();
     updateTerrainUI();
+    if (DOM.seedHelperText) {
+      DOM.seedHelperText.textContent = 'Leave blank for a random seed, or click Random for an epic seed.';
+    }
     hideStatus();
     if (terrainViewer) terrainViewer.updateTerrain();
   });
@@ -310,14 +371,38 @@
       if (activeTerrain.hasRegion) {
         const isRolling = activeTerrain.generatorType === 'rolling_plains';
         const terrain = isRolling ? new window.RollingPlainsTerrain(seed) : null;
+        const BiomeClass = window.VanillaBiomeGenerator || window.BiomeGenerator;
+        const biomeGen = (isRolling && BiomeClass) ? new BiomeClass(seed) : null;
+        const getTreesFunc = window.getBiomeTrees || window.getTreeLocations;
+        const trees = (getTreesFunc && isRolling && terrain)
+          ? getTreesFunc(seed, terrain, biomeGen, false)
+          : [];
 
-        // Calculate safe spawn position directly on top of grass in Chunk (0,0)
+        // Calculate safe spawn position directly on top of surface in Chunk (0,0)
         spawnX = 8;
         spawnZ = 8;
-        spawnY = (isRolling ? terrain.getHeight(8, 8) : 64) + 1;
+        spawnY = (isRolling ? terrain.getHeight(8, 8, biomeGen) : 64) + 1;
+
+        const spawnBiomeId = biomeGen ? biomeGen.getBiomeAt(8, 8, spawnY) : 1;
+        const biomeNames = {
+          0: 'Ocean', 1: 'Plains', 2: 'Desert', 3: 'Mountains', 4: 'Forest', 5: 'Taiga', 6: 'Swamp', 7: 'River',
+          10: 'Frozen Ocean', 11: 'Frozen River', 12: 'Snowy Tundra', 13: 'Snowy Mountains', 14: 'Mushroom Fields',
+          15: 'Mushroom Shore', 16: 'Beach', 17: 'Desert Hills', 18: 'Wooded Hills', 19: 'Taiga Hills',
+          21: 'Jungle', 22: 'Jungle Hills', 23: 'Jungle Edge', 24: 'Deep Ocean', 25: 'Stone Shore', 26: 'Snowy Beach',
+          27: 'Birch Forest', 28: 'Birch Forest Hills', 29: 'Dark Forest', 30: 'Snowy Taiga', 31: 'Snowy Taiga Hills',
+          32: 'Giant Tree Taiga', 33: 'Giant Tree Taiga Hills', 34: 'Wooded Mountains', 35: 'Savanna', 36: 'Savanna Plateau',
+          37: 'Badlands', 38: 'Wooded Badlands Plateau', 39: 'Badlands Plateau', 44: 'Warm Ocean', 45: 'Lukewarm Ocean',
+          46: 'Cold Ocean', 47: 'Deep Warm Ocean', 48: 'Deep Lukewarm Ocean', 49: 'Deep Cold Ocean', 50: 'Deep Frozen Ocean',
+          129: 'Sunflower Plains', 130: 'Desert Lakes', 131: 'Gravelly Mountains', 132: 'Flower Forest', 133: 'Taiga Mountains',
+          134: 'Swamp Hills', 140: 'Ice Spikes', 149: 'Modified Jungle', 151: 'Modified Jungle Edge', 155: 'Tall Birch Forest',
+          156: 'Tall Birch Hills', 157: 'Dark Forest Hills', 158: 'Snowy Taiga Mountains', 160: 'Giant Spruce Taiga',
+          161: 'Giant Spruce Taiga Hills', 162: 'Modified Gravelly Mountains', 163: 'Shattered Savanna', 164: 'Shattered Savanna Plateau',
+          165: 'Eroded Badlands', 166: 'Modified Wooded Badlands Plateau', 167: 'Modified Badlands Plateau', 168: 'Bamboo Jungle', 169: 'Bamboo Jungle Hills'
+        };
+        const bName = biomeNames[spawnBiomeId] || `Biome #${spawnBiomeId}`;
 
         const statusLabel = isRolling
-          ? 'Generating Rolling Plains (3-Octave Perlin hills)...'
+          ? `Generating ${bName} (${trees.length} trees & underground ore veins)...`
           : 'Generating 9 Flat spawn chunks...';
         setStatus(statusLabel, 'loading');
         await new Promise(r => setTimeout(r, 60)); // Yield to render UI
@@ -325,7 +410,13 @@
         const chunks = [];
         for (let cx = 0; cx < 3; cx++) {
           for (let cz = 0; cz < 3; cz++) {
-            const rawChunkBytes = window.buildTerrainChunkNbt(cx, cz, terrain, !isRolling);
+            const chunkOres = (isRolling && window.generateChunkOres)
+              ? window.generateChunkOres(seed, cx, cz)
+              : [];
+            const chunkFlora = (isRolling && window.getChunkFlora)
+              ? window.getChunkFlora(seed, cx, cz, terrain, biomeGen, trees)
+              : [];
+            const rawChunkBytes = window.buildTerrainChunkNbt(cx, cz, terrain, !isRolling, trees, biomeGen, chunkOres, chunkFlora);
             // ZLIB compression (RFC 1950) via pako.deflate
             const compChunk = window.pako.deflate(rawChunkBytes);
             chunks.push({ cx, cz, compData: compChunk });
@@ -429,9 +520,20 @@
       meshModeTextElem: DOM.meshModeText,
       btnResetCamera: DOM.btnResetCamera,
       btnToggleMeshMode: DOM.btnToggleMeshMode,
+      btnToggleXRay: DOM.btnToggleXRay,
+      xrayTextElem: DOM.xrayText,
       getSeedFunc: () => window.parseMinecraftSeed(DOM.worldSeed.value),
       getTerrainModeFunc: () => TERRAIN_MODES[state.terrainModeIndex].generatorType
     });
+  }
+
+  // Auto-refresh terrain when Cubiomes 1.16 WASM engine completes loading
+  if (typeof window.initCubiomesWasm === 'function') {
+    window.initCubiomesWasm().then(() => {
+      if (terrainViewer) {
+        terrainViewer.updateTerrain();
+      }
+    }).catch(() => {});
   }
 
 })();

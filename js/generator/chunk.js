@@ -13,7 +13,7 @@
 (function (root) {
   'use strict';
 
-  function buildTerrainChunkNbt(cx, cz, terrain, isFlat = false) {
+  function buildTerrainChunkNbt(cx, cz, terrain, isFlat = false, trees = [], biomeGen = null, chunkOres = null, chunkFlora = null) {
     const NBTWriterClass = root.NBTWriter || (typeof require !== 'undefined' ? require('../core/nbt.js').NBTWriter : null);
     const tags = root.NBT_TAGS || (typeof require !== 'undefined' ? require('../core/nbt.js').NBT_TAGS : null);
 
@@ -35,61 +35,45 @@
     nbt.tagString('Status', 'full');
     nbt.tagInt('DataVersion', 2567);
 
-    // Biomes: 1024 ints (all 1 = minecraft:plains)
-    const biomes = new Int32Array(1024);
-    biomes.fill(1);
-    nbt.tagIntArray('Biomes', biomes);
-
     // Compute surface heights for all 256 (16x16) columns in this chunk
     const heights = new Uint8Array(256);
     for (let z = 0; z < 16; z++) {
       for (let x = 0; x < 16; x++) {
         const wx = cx * 16 + x;
         const wz = cz * 16 + z;
-        heights[z * 16 + x] = isFlat ? 64 : terrain.getHeight(wx, wz);
+        heights[z * 16 + x] = isFlat ? 64 : (terrain ? terrain.getHeight(wx, wz) : 64);
       }
     }
+
+    // Biomes: 1024 ints (4x4x64 grid in Z, then X, then Y layout: idx = by*16 + bz*4 + bx)
+    const biomes = new Int32Array(1024);
+    for (let by = 0; by < 64; by++) {
+      const wy = by * 4;
+      for (let bz = 0; bz < 4; bz++) {
+        const wz = cz * 16 + bz * 4 + 2;
+        for (let bx = 0; bx < 4; bx++) {
+          const wx = cx * 16 + bx * 4 + 2;
+          const h = heights[(bz * 4 + 2) * 16 + (bx * 4 + 2)] || 64;
+          const bId = biomeGen ? biomeGen.getBiomeAt(wx, wz, h) : 1;
+          biomes[by * 16 + bz * 4 + bx] = bId;
+        }
+      }
+    }
+    nbt.tagIntArray('Biomes', biomes);
 
     // Number of active sections: Y=0..4 (Y=0 s/d 79)
     const numSections = 5;
     nbt.startList('Sections', tags.TAG_Compound, numSections);
 
+    const cStartX = cx * 16;
+    const cEndX = cStartX + 15;
+    const cStartZ = cz * 16;
+    const cEndZ = cStartZ + 15;
+
     for (let secY = 0; secY < numSections; secY++) {
       nbt.tagByte('Y', secY);
       const baseWorldY = secY * 16;
 
-      // Section 1 & 2 (Y=16..47) are always 100% solid stone
-      if (secY === 1 || secY === 2) {
-        nbt.startList('Palette', tags.TAG_Compound, 1);
-        nbt.tagString('Name', 'minecraft:stone');
-        nbt.endCompound();
-        // Palette of 1 item -> BlockStates omitted in Minecraft 1.16+
-        nbt.endCompound();
-        continue;
-      }
-
-      // Section 0 (Y=0..15): Y=0 is Bedrock, Y=1..15 is Stone
-      if (secY === 0) {
-        nbt.startList('Palette', tags.TAG_Compound, 2);
-        nbt.tagString('Name', 'minecraft:bedrock');
-        nbt.endCompound();
-        nbt.tagString('Name', 'minecraft:stone');
-        nbt.endCompound();
-
-        const longs = new BigInt64Array(256);
-        for (let i = 0; i < 4096; i++) {
-          const y = i >> 8; // (i / 256)
-          const pid = (y === 0) ? 0n : 1n;
-          const longIdx = i >> 4;
-          const bitOffset = BigInt((i & 15) << 2);
-          longs[longIdx] |= (pid << bitOffset);
-        }
-        nbt.tagLongArray('BlockStates', longs);
-        nbt.endCompound();
-        continue;
-      }
-
-      // Sections 3 & 4 (Y=48..63 & Y=64..79): Dynamic terrain blocks
       const secBlocks = new Uint8Array(4096);
       const usedPalette = new Set();
 
@@ -97,15 +81,22 @@
         const worldY = baseWorldY + localY;
         for (let z = 0; z < 16; z++) {
           for (let x = 0; x < 16; x++) {
+            const wx = cx * 16 + x;
+            const wz = cz * 16 + z;
             const h = heights[z * 16 + x];
+            const bId = biomeGen ? biomeGen.getBiomeAt(wx, wz, h) : 1;
+            const surf = biomeGen ? biomeGen.getSurfaceConfig(bId, h) : { topBlockId: (h >= 63 ? 3 : 2), subBlockId: 2, subDepth: 3 };
+
             let blockId = 0; // 0 = air
 
-            if (worldY < h - 3) {
+            if (worldY === 0) {
+              blockId = 19; // 19 = bedrock
+            } else if (worldY < h - surf.subDepth) {
               blockId = 1; // 1 = stone
             } else if (worldY < h) {
-              blockId = 2; // 2 = dirt
+              blockId = surf.subBlockId; // dirt or sandstone
             } else if (worldY === h) {
-              blockId = (h >= 63) ? 3 : 2; // 3 = grass_block, 2 = dirt
+              blockId = (h >= 63) ? surf.topBlockId : (surf.topBlockId === 5 ? 5 : 2); // surface block
             } else if (worldY <= 62) {
               blockId = 4; // 4 = water
             } else {
@@ -118,12 +109,126 @@
         }
       }
 
+      // Stamp Underground Ores (Coal, Iron, Gold, Redstone, Diamond, Lapis)
+      // Only replaces solid stone (ID 1)
+      if (Array.isArray(chunkOres) && chunkOres.length > 0) {
+        for (const vein of chunkOres) {
+          for (const b of vein.blocks) {
+            if (b.y >= baseWorldY && b.y < baseWorldY + 16) {
+              const lx = b.x - cStartX;
+              const ly = b.y - baseWorldY;
+              const lz = b.z - cStartZ;
+              if (lx >= 0 && lx < 16 && lz >= 0 && lz < 16) {
+                const idx = ly * 256 + lz * 16 + lx;
+                if (secBlocks[idx] === 1) { // strictly replace stone only
+                  secBlocks[idx] = vein.oreId;
+                  usedPalette.add(vein.oreId);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Stamp Trees (Oak, Birch, Spruce) into this section if any intersect
+      if (Array.isArray(trees) && trees.length > 0) {
+        // Safe helper to stamp block within this section's bounds
+        const stampBlock = (wx, wy, wz, blockId) => {
+          if (wx < cStartX || wx > cEndX || wz < cStartZ || wz > cEndZ) return;
+          if (wy < baseWorldY || wy >= baseWorldY + 16) return;
+          const lx = wx - cStartX;
+          const ly = wy - baseWorldY;
+          const lz = wz - cStartZ;
+          const idx = ly * 256 + lz * 16 + lx;
+          const existing = secBlocks[idx];
+
+          const isLog = (blockId === 7 || blockId === 9 || blockId === 11);
+          const isLeaves = (blockId === 8 || blockId === 10 || blockId === 12);
+
+          // Leaves only replace air; logs replace air or leaves
+          if (isLog || (isLeaves && existing === 0)) {
+            secBlocks[idx] = blockId;
+            usedPalette.add(blockId);
+          }
+        };
+
+        // Filter trees that could touch this chunk (including 2-block leaf radius)
+        const relevantTrees = trees.filter(t =>
+          t.x >= cStartX - 2 && t.x <= cEndX + 2 &&
+          t.z >= cStartZ - 2 && t.z <= cEndZ + 2
+        );
+
+        const stampTreeFunc = root.stampTree || (typeof require !== 'undefined' ? require('./tree.js').stampTree : null);
+
+        for (const t of relevantTrees) {
+          if (stampTreeFunc) {
+            stampTreeFunc(t, stampBlock);
+          } else {
+            // Fallback Oak Stamping
+            const top = t.y + t.trunkHeight;
+            const logId = t.logId || 7;
+            const leafId = t.leavesId || 8;
+            for (let ty = t.y + 1; ty <= top; ty++) stampBlock(t.x, ty, t.z, logId);
+            for (let ly = top - 1; ly <= top; ly++) {
+              for (let dz = -2; dz <= 2; dz++) {
+                for (let dx = -2; dx <= 2; dx++) {
+                  if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue;
+                  stampBlock(t.x + dx, ly, t.z + dz, leafId);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Stamp Surface Flora (Grass, Poppy, Dandelion, Cactus, Dead Bush)
+      if (Array.isArray(chunkFlora) && chunkFlora.length > 0) {
+        for (const f of chunkFlora) {
+          for (let fy = 0; fy < f.height; fy++) {
+            const wy = f.y + fy;
+            if (wy >= baseWorldY && wy < baseWorldY + 16) {
+              const lx = f.x - cStartX;
+              const ly = wy - baseWorldY;
+              const lz = f.z - cStartZ;
+              if (lx >= 0 && lx < 16 && lz >= 0 && lz < 16) {
+                const idx = ly * 256 + lz * 16 + lx;
+                // Flora strictly only replaces air (ID 0)
+                if (secBlocks[idx] === 0) {
+                  secBlocks[idx] = f.blockId;
+                  usedPalette.add(f.blockId);
+                }
+              }
+            }
+          }
+        }
+      }
+
       const paletteNames = [
-        'minecraft:air',
-        'minecraft:stone',
-        'minecraft:dirt',
-        'minecraft:grass_block',
-        'minecraft:water'
+        'minecraft:air',            // 0
+        'minecraft:stone',          // 1
+        'minecraft:dirt',           // 2
+        'minecraft:grass_block',    // 3
+        'minecraft:water',          // 4
+        'minecraft:sand',           // 5
+        'minecraft:sandstone',      // 6
+        'minecraft:oak_log',        // 7
+        'minecraft:oak_leaves',     // 8
+        'minecraft:birch_log',      // 9
+        'minecraft:birch_leaves',   // 10
+        'minecraft:spruce_log',     // 11
+        'minecraft:spruce_leaves',  // 12
+        'minecraft:coal_ore',       // 13
+        'minecraft:iron_ore',       // 14
+        'minecraft:gold_ore',       // 15
+        'minecraft:redstone_ore',   // 16
+        'minecraft:diamond_ore',    // 17
+        'minecraft:lapis_ore',      // 18
+        'minecraft:bedrock',        // 19
+        'minecraft:grass',          // 20
+        'minecraft:poppy',          // 21
+        'minecraft:dandelion',      // 22
+        'minecraft:cactus',         // 23
+        'minecraft:dead_bush'       // 24
       ];
 
       const sortedUsed = Array.from(usedPalette).sort((a, b) => a - b);
@@ -138,17 +243,39 @@
           nbt.startCompound('Properties');
           nbt.tagString('snowy', 'false');
           nbt.endCompound();
+        } else if (name.endsWith('_log')) {
+          nbt.startCompound('Properties');
+          nbt.tagString('axis', 'y');
+          nbt.endCompound();
+        } else if (name.endsWith('_leaves')) {
+          nbt.startCompound('Properties');
+          nbt.tagString('distance', '1');
+          nbt.tagString('persistent', 'true');
+          nbt.endCompound();
+        } else if (name === 'minecraft:cactus') {
+          nbt.startCompound('Properties');
+          nbt.tagString('age', '0');
+          nbt.endCompound();
         }
         nbt.endCompound();
       }
 
+      // Dynamic bits-per-block bit-packing (Minecraft 1.16+ DataVersion 2567 standard)
       if (sortedUsed.length > 1) {
-        const longs = new BigInt64Array(256);
+        let bits = 4;
+        while ((1 << bits) < sortedUsed.length) bits++;
+        bits = Math.max(4, bits);
+
+        const blocksPerLong = Math.floor(64 / bits);
+        const numLongs = Math.ceil(4096 / blocksPerLong);
+        const longs = new BigInt64Array(numLongs);
+        const bitMask = (1n << BigInt(bits)) - 1n;
+
         for (let i = 0; i < 4096; i++) {
           const rawId = secBlocks[i];
-          const pid = BigInt(idToPaletteIndex.get(rawId));
-          const longIdx = i >> 4;
-          const bitOffset = BigInt((i & 15) << 2);
+          const pid = BigInt(idToPaletteIndex.get(rawId)) & bitMask;
+          const longIdx = Math.floor(i / blocksPerLong);
+          const bitOffset = BigInt((i % blocksPerLong) * bits);
           longs[longIdx] |= (pid << bitOffset);
         }
         nbt.tagLongArray('BlockStates', longs);

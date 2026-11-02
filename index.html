@@ -76,10 +76,10 @@
         </div>
       </div>
 
-      <!-- Section: Seed Input -->
+      <!-- Section: Seed Input with Random Seed Dice Button -->
       <div class="form-group">
         <label for="worldSeed" class="mc-label">Seed for the World Generator</label>
-        <div class="mc-input-wrapper">
+        <div class="mc-input-with-action">
           <input 
             type="text" 
             id="worldSeed" 
@@ -89,9 +89,12 @@
             autocomplete="off" 
             spellcheck="false"
           />
+          <button type="button" id="btnRandomSeed" class="mc-btn mc-btn-seed-random" title="Generate Random Seed" aria-label="Randomize Seed">
+            <span class="dice-icon" id="diceIcon">🎲</span> Random
+          </button>
         </div>
-        <p class="mc-helper">
-          Leave blank for a random seed, or enter any number/text.
+        <p class="mc-helper" id="seedHelperText">
+          Leave blank for a random seed, or click Random for an epic seed.
         </p>
       </div>
 
@@ -147,6 +150,9 @@
             <button type="button" id="btnToggleMeshMode" class="mc-btn mc-btn-sm" aria-label="Mode Tampilan">
               Mode: <span id="meshModeText">Voxel</span>
             </button>
+            <button type="button" id="btnToggleXRay" class="mc-btn mc-btn-sm" aria-label="Toggle X-Ray Bijih">
+              💎 X-Ray: <span id="xrayText">OFF</span>
+            </button>
           </div>
         </div>
 
@@ -156,6 +162,16 @@
           <div id="canvasOverlayLoading" class="mc-canvas-overlay hidden">
             <div class="mc-spinner"></div>
             <span>Updating 3D Terrain...</span>
+          </div>
+
+          <!-- Compass HUD Widget (Interactive North / South Indicator) -->
+          <div id="compassHud" class="mc-compass-hud" title="Klik untuk menghadap ke Utara (North)">
+            <div class="mc-compass-dial" id="compassDial">
+              <div class="mc-compass-needle mc-needle-north"><span>N</span></div>
+              <div class="mc-compass-needle mc-needle-south"><span>S</span></div>
+              <div class="mc-compass-center-dot"></div>
+            </div>
+            <div class="mc-compass-label" id="compassLabel">North (-Z)</div>
           </div>
         </div>
 
@@ -210,7 +226,12 @@
   <script src="js/core/anvil.js"></script>
 
   <!-- World Generation & Math -->
+  <script type="module" src="js/wasm/cubiomes_adapter.js"></script>
   <script src="js/generator/noise.js"></script>
+  <script src="js/generator/biome.js"></script>
+  <script src="js/generator/tree.js"></script>
+  <script src="js/generator/ore.js"></script>
+  <script src="js/generator/flora.js"></script>
   <script src="js/generator/terrain.js"></script>
   <script src="js/generator/chunk.js"></script>
 
