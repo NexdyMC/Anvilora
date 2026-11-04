@@ -105,6 +105,11 @@
       this.toz = rnd.nextInt(20000) - 10000;
       this.mox = rnd.nextInt(20000) - 10000;
       this.moz = rnd.nextInt(20000) - 10000;
+
+      const CubiomesGenClass = root.CubiomesGenerator || (typeof require !== 'undefined' ? require('../cubiomes/generator.js').CubiomesGenerator : null);
+      if (CubiomesGenClass) {
+        this.cubiomesGen = new CubiomesGenClass(s);
+      }
     }
 
     /**
@@ -125,6 +130,10 @@
      * Resolves the Minecraft Biome ID at given (wx, wz, wy) coordinates
      */
     getBiomeAt(wx, wz, elevation = 65) {
+      if (this.cubiomesGen) {
+        return this.cubiomesGen.getBiomeAtBlock(wx, wz);
+      }
+
       // Water level rule
       if (elevation <= 61) {
         return BIOME_IDS.RIVER;
@@ -161,49 +170,54 @@
      * Returns surface and subsurface block configuration for the given biome
      */
     getSurfaceConfig(biomeId, elevation) {
-      switch (biomeId) {
-        case BIOME_IDS.DESERT:
-        case BIOME_IDS.BEACH:
-          return {
-            topBlockId: 5,       // minecraft:sand
-            subBlockId: 6,       // minecraft:sandstone
-            subDepth: 4
-          };
-
-        case BIOME_IDS.MOUNTAINS:
-          if (elevation >= 71) {
-            return {
-              topBlockId: 1,     // minecraft:stone
-              subBlockId: 1,     // minecraft:stone
-              subDepth: 0
-            };
-          }
-          return {
-            topBlockId: 3,       // minecraft:grass_block
-            subBlockId: 2,       // minecraft:dirt
-            subDepth: 3
-          };
-
-        case BIOME_IDS.FOREST:
-        case BIOME_IDS.BIRCH_FOREST:
-        case BIOME_IDS.TAIGA:
-        case BIOME_IDS.PLAINS:
-        default:
-          return {
-            topBlockId: 3,       // minecraft:grass_block
-            subBlockId: 2,       // minecraft:dirt
-            subDepth: 3
-          };
+      if (biomeId === 0 || biomeId === 24 || (biomeId >= 44 && biomeId <= 50)) {
+        return {
+          topBlockId: 12, // gravel
+          subBlockId: 12,
+          subDepth: 2
+        };
       }
+      if (biomeId === 2 || biomeId === 130) {
+        return {
+          topBlockId: 5,  // sand
+          subBlockId: 6,  // sandstone
+          subDepth: 4
+        };
+      }
+      if (biomeId === 16 || biomeId === 26) {
+        return {
+          topBlockId: 5,  // sand
+          subBlockId: 6,  // sandstone
+          subDepth: 3
+        };
+      }
+      if (biomeId === 25) {
+        return {
+          topBlockId: 1,  // stone
+          subBlockId: 1,
+          subDepth: 0
+        };
+      }
+      if (biomeId === 3 || biomeId === 34 || biomeId === 131) {
+        if (elevation >= 71) {
+          return { topBlockId: 1, subBlockId: 1, subDepth: 0 };
+        }
+      }
+      return {
+        topBlockId: 3,    // grass_block
+        subBlockId: 2,    // dirt
+        subDepth: 3
+      };
     }
   }
 
   // Export to global scope
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { BIOME_IDS, getBiomeColor, BiomeGenerator };
+    module.exports = { BIOME_IDS, getBiomeColor, BiomeGenerator, VanillaBiomeGenerator: BiomeGenerator };
   } else {
     root.BIOME_IDS = BIOME_IDS;
     root.getBiomeColor = getBiomeColor;
     root.BiomeGenerator = BiomeGenerator;
+    root.VanillaBiomeGenerator = BiomeGenerator;
   }
 })(typeof window !== 'undefined' ? window : globalThis);

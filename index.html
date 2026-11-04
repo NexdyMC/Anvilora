@@ -6,7 +6,7 @@
   <title>Minecraft 1.16.1 Instant World Save Generator</title>
   <meta name="description" content="Generate and download authentic Minecraft Java 1.16.1 world save files (.zip) instantly in your browser.">
   
-  <!-- Google Fonts: Press Start 2P for authentic Minecraft pixel aesthetics -->
+  <!-- Google Fonts: Press Start 2P for fallback pixel aesthetics -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -14,11 +14,11 @@
   <!-- Stylesheet -->
   <link rel="stylesheet" href="style.css">
 
-  <!-- External Libraries (CDN) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Local Libraries (Offline) -->
+  <script src="js/libs/pako.min.js"></script>
+  <script src="js/libs/jszip.min.js"></script>
+  <script src="js/libs/three.min.js"></script>
+  <script src="js/libs/OrbitControls.js"></script>
 </head>
 <body>
   <!-- Dirt background & dark vignette overlay container -->
@@ -32,152 +32,279 @@
 
     <form id="worldForm" class="mc-form" onsubmit="return false;">
       
-      <!-- Section: World Name -->
-      <div class="form-group">
-        <label for="worldName" class="mc-label">World Name</label>
-        <div class="mc-input-wrapper">
-          <input 
-            type="text" 
-            id="worldName" 
-            name="worldName" 
-            class="mc-input" 
-            value="New World" 
-            maxlength="40" 
-            autocomplete="off" 
-            spellcheck="false"
-            required
-          />
-        </div>
-        <p class="mc-helper" id="saveLocationHelper">
-          Will be saved in: <span class="highlight-text" id="saveFolderName">saves/New World</span>
-        </p>
-      </div>
+      <!-- 2-Column Split Layout on Laptop / Desktop -->
+      <div class="mc-settings-grid">
+        
+        <!-- KOLOM 1: Mode & Aturan Gameplay (Mode Minecraft) -->
+        <div class="mc-settings-col mc-col-mode">
+          
+          <!-- Section: World Name -->
+          <div class="form-group">
+            <label for="worldName" class="mc-label">World Name</label>
+            <div class="mc-input-wrapper">
+              <input 
+                type="text" 
+                id="worldName" 
+                name="worldName" 
+                class="mc-input" 
+                value="New World" 
+                maxlength="40" 
+                autocomplete="off" 
+                spellcheck="false"
+                required
+              />
+            </div>
+            <p class="mc-helper" id="saveLocationHelper">
+              Will be saved in: <span class="highlight-text" id="saveFolderName">saves/New World</span>
+            </p>
+          </div>
 
-      <!-- Section: Game Mode & Difficulty (2-column on desktop, stacked on mobile) -->
-      <div class="form-row">
-        <!-- Game Mode Toggle Button -->
-        <div class="form-col">
-          <button type="button" id="btnGameMode" class="mc-btn mc-btn-toggle" aria-label="Toggle Game Mode">
-            Game Mode: <span id="gameModeText">Survival</span>
-          </button>
-          <p class="mc-helper-desc" id="gameModeDesc">
-            Search for resources, crafting, gain levels, health and hunger.
-          </p>
-        </div>
+          <!-- Section: Game Mode -->
+          <div class="form-group">
+            <label class="mc-label">Game Mode</label>
+            <button type="button" id="btnGameMode" class="mc-btn mc-btn-toggle" aria-label="Toggle Game Mode">
+              Game Mode: <span id="gameModeText">Survival</span>
+            </button>
+            <p class="mc-helper-desc" id="gameModeDesc">
+              Search for resources, crafting, gain levels, health and hunger.
+            </p>
+          </div>
 
-        <!-- Difficulty Toggle Button -->
-        <div class="form-col">
-          <button type="button" id="btnDifficulty" class="mc-btn mc-btn-toggle" aria-label="Toggle Difficulty">
-            Difficulty: <span id="difficultyText">Normal</span>
-          </button>
-          <p class="mc-helper-desc" id="difficultyDesc">
-            Standard survival, monsters spawn, starvation down to 1 HP.
-          </p>
-        </div>
-      </div>
+          <!-- Section: Difficulty -->
+          <div class="form-group">
+            <label class="mc-label">Difficulty</label>
+            <button type="button" id="btnDifficulty" class="mc-btn mc-btn-toggle" aria-label="Toggle Difficulty">
+              Difficulty: <span id="difficultyText">Normal</span>
+            </button>
+            <p class="mc-helper-desc" id="difficultyDesc">
+              Standard survival, monsters spawn, starvation down to 1 HP.
+            </p>
+          </div>
 
-      <!-- Section: Seed Input with Random Seed Dice Button -->
-      <div class="form-group">
-        <label for="worldSeed" class="mc-label">Seed for the World Generator</label>
-        <div class="mc-input-with-action">
-          <input 
-            type="text" 
-            id="worldSeed" 
-            name="worldSeed" 
-            class="mc-input" 
-            placeholder="Leave blank for a random seed" 
-            autocomplete="off" 
-            spellcheck="false"
-          />
-          <button type="button" id="btnRandomSeed" class="mc-btn mc-btn-seed-random" title="Generate Random Seed" aria-label="Randomize Seed">
-            <span class="dice-icon" id="diceIcon">🎲</span> Random
-          </button>
-        </div>
-        <p class="mc-helper" id="seedHelperText">
-          Leave blank for a random seed, or click Random for an epic seed.
-        </p>
-      </div>
+          <!-- Section: Allow Cheats -->
+          <div class="form-group">
+            <label class="mc-label">Commands &amp; Cheats</label>
+            <button type="button" id="btnCheats" class="mc-btn mc-btn-toggle" aria-label="Toggle Cheats">
+              Allow Cheats: <span id="cheatsText">OFF</span>
+            </button>
+            <p class="mc-helper-desc" id="cheatsDesc">
+              Commands like /gamemode, /tp, /give are disabled.
+            </p>
+          </div>
 
-      <!-- Section: Cheats & Structures (2-column on desktop, stacked on mobile) -->
-      <div class="form-row">
-        <!-- Allow Cheats Toggle Button -->
-        <div class="form-col">
-          <button type="button" id="btnCheats" class="mc-btn mc-btn-toggle" aria-label="Toggle Cheats">
-            Allow Cheats: <span id="cheatsText">OFF</span>
-          </button>
-          <p class="mc-helper-desc" id="cheatsDesc">
-            Commands like /gamemode, /tp, /give.
-          </p>
-        </div>
-
-        <!-- Generate Structures Toggle Button -->
-        <div class="form-col">
-          <button type="button" id="btnStructures" class="mc-btn mc-btn-toggle" aria-label="Toggle Generate Structures">
-            Generate Structures: <span id="structuresText">ON</span>
-          </button>
-          <p class="mc-helper-desc" id="structuresDesc">
-            Villages, dungeons, mineshafts, etc.
-          </p>
-        </div>
-      </div>
-
-      <!-- Section: Overworld Terrain Generation -->
-      <div class="form-group">
-        <label class="mc-label">Overworld Terrain (Region .MCA)</label>
-        <button type="button" id="btnTerrain" class="mc-btn mc-btn-toggle" aria-label="Toggle Overworld Terrain">
-          Spawn Terrain: <span id="terrainText">Rolling Plains (Hills 3x3)</span>
-        </button>
-        <p class="mc-helper-desc" id="terrainDesc">
-          3-Octave Perlin noise hills (Y=62..72) with bedrock, stone, dirt &amp; grass.
-        </p>
-      </div>
-
-      <!-- Section: 3D Interactive Chunk & Terrain Preview -->
-      <div class="mc-preview-card" aria-label="3D World Terrain Preview">
-        <div class="mc-preview-header">
-          <div class="mc-preview-title-box">
-            <h2 class="mc-preview-title">
-              <span class="mc-icon">🧊</span> 3D World Terrain Preview (Interactive)
-            </h2>
-            <div id="previewElevation" class="mc-preview-elevation">
-              Spawn: X: 8, Y: 68, Z: 8
+          <!-- Section: Game Rules -->
+          <div class="form-group mc-gamerules-section">
+            <label class="mc-label">Game Rules (Aturan Dunia)</label>
+            <div class="mc-gamerules-grid">
+              <button type="button" id="btnKeepInventory" class="mc-btn mc-btn-toggle mc-btn-sm" title="Keep items upon death">
+                Keep Inventory: <span id="keepInventoryText">OFF</span>
+              </button>
+              <button type="button" id="btnDaylightCycle" class="mc-btn mc-btn-toggle mc-btn-sm" title="Day/night cycle progression">
+                Daylight: <span id="daylightCycleText">ON</span>
+              </button>
+              <button type="button" id="btnMobGriefing" class="mc-btn mc-btn-toggle mc-btn-sm" title="Creepers/Endermen destroy blocks">
+                Mob Griefing: <span id="mobGriefingText">ON</span>
+              </button>
+              <button type="button" id="btnWeatherCycle" class="mc-btn mc-btn-toggle mc-btn-sm" title="Rain and thunder cycle">
+                Weather: <span id="weatherCycleText">ON</span>
+              </button>
             </div>
           </div>
-          <div class="mc-preview-actions">
-            <button type="button" id="btnResetCamera" class="mc-btn mc-btn-sm" aria-label="Reset Kamera">
-              Reset Kamera
-            </button>
-            <button type="button" id="btnToggleMeshMode" class="mc-btn mc-btn-sm" aria-label="Mode Tampilan">
-              Mode: <span id="meshModeText">Voxel</span>
-            </button>
-            <button type="button" id="btnToggleXRay" class="mc-btn mc-btn-sm" aria-label="Toggle X-Ray Bijih">
-              💎 X-Ray: <span id="xrayText">OFF</span>
-            </button>
-          </div>
+
         </div>
 
-        <!-- WebGL Canvas Container with Minecraft Bevel Frame -->
-        <div class="mc-canvas-wrapper" id="canvasWrapper">
-          <canvas id="terrainCanvas"></canvas>
-          <div id="canvasOverlayLoading" class="mc-canvas-overlay hidden">
-            <div class="mc-spinner"></div>
-            <span>Updating 3D Terrain...</span>
-          </div>
+        <!-- KOLOM 2: Worldgen, Seed & Preview (World Minecraft) -->
+        <div class="mc-settings-col mc-col-world">
 
-          <!-- Compass HUD Widget (Interactive North / South Indicator) -->
-          <div id="compassHud" class="mc-compass-hud" title="Klik untuk menghadap ke Utara (North)">
-            <div class="mc-compass-dial" id="compassDial">
-              <div class="mc-compass-needle mc-needle-north"><span>N</span></div>
-              <div class="mc-compass-needle mc-needle-south"><span>S</span></div>
-              <div class="mc-compass-center-dot"></div>
+          <!-- 1. Section: Seed Input with Random Seed Dice Button -->
+          <div class="form-group">
+            <label for="worldSeed" class="mc-label">Seed for the World Generator</label>
+            <div class="mc-input-with-action">
+              <input 
+                type="text" 
+                id="worldSeed" 
+                name="worldSeed" 
+                class="mc-input" 
+                placeholder="Leave blank for a random seed" 
+                autocomplete="off" 
+                spellcheck="false"
+              />
+              <button type="button" id="btnRandomSeed" class="mc-btn mc-btn-seed-random" title="Generate Random Seed" aria-label="Randomize Seed">
+                <span class="dice-icon" id="diceIcon">🎲</span> Random
+              </button>
             </div>
-            <div class="mc-compass-label" id="compassLabel">North (-Z)</div>
+            <p class="mc-helper" id="seedHelperText">
+              Leave blank for a random seed, or click Random for an epic seed.
+            </p>
           </div>
+
+          <!-- 2. Section: 2D Biome Map & 3D World Terrain Preview -->
+          <div class="mc-preview-card" aria-label="Biome Map & World Terrain Preview">
+            <div class="mc-preview-header">
+              <div class="mc-preview-title-box">
+                <h2 class="mc-preview-title" id="previewTitle">
+                  <span class="mc-icon">🗺️</span> 2D Biome Map (Chunkbase 1.16)
+                </h2>
+                <div id="previewElevation" class="mc-preview-elevation">
+                  Cursor: X: 8, Z: 8 &bull; Chunk: [0, 0] &bull; <span class="mc-biome-badge" id="biomeBadge">Taiga (5)</span>
+                </div>
+              </div>
+              <div class="mc-preview-actions">
+                <!-- Dimension Switch: Overworld vs The Nether -->
+                <button type="button" id="btnDimension" class="mc-btn mc-btn-sm mc-btn-dim" title="Switch Dimension (Overworld / Nether)">
+                  Dim: <span id="dimensionText">Overworld</span>
+                </button>
+                <!-- 2D Map Controls -->
+                <button type="button" id="btnMapZoomIn" class="mc-btn mc-btn-sm" title="Zoom In" aria-label="Zoom In">
+                  ➕
+                </button>
+                <button type="button" id="btnMapZoomOut" class="mc-btn mc-btn-sm" title="Zoom Out" aria-label="Zoom Out">
+                  ➖
+                </button>
+                <button type="button" id="btnMapCenterSpawn" class="mc-btn mc-btn-sm" title="Ke Spawn Point" aria-label="Spawn">
+                  ⌂ Spawn
+                </button>
+                <button type="button" id="btnToggleGrid" class="mc-btn mc-btn-sm" title="Toggle Chunk Grid">
+                  Grid: <span id="gridText">ON</span>
+                </button>
+                <!-- Switch between 2D Map and 3D Voxel Preview -->
+                <button type="button" id="btnSwitchView" class="mc-btn mc-btn-sm mc-btn-highlight" title="Switch 2D / 3D">
+                  View: <span id="viewModeText">2D Map</span>
+                </button>
+                <!-- 3D Controls (hidden when in 2D mode) -->
+                <button type="button" id="btnResetCamera" class="mc-btn mc-btn-sm hidden" aria-label="Reset Kamera">
+                  Reset
+                </button>
+                <button type="button" id="btnToggleMeshMode" class="mc-btn mc-btn-sm hidden" aria-label="Mode Tampilan">
+                  Mode: <span id="meshModeText">Voxel</span>
+                </button>
+                <button type="button" id="btnToggleXRay" class="mc-btn mc-btn-sm hidden" aria-label="Toggle X-Ray Bijih">
+                  💎 X-Ray: <span id="xrayText">OFF</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Chunkbase-style Features Bar (Structures filter buttons) -->
+            <div class="mc-features-bar" id="featuresBar">
+              <div class="mc-features-top">
+                <span class="mc-features-title">Features:</span>
+                <button type="button" id="btnFeaturesAll" class="mc-btn-link">All</button>
+                <span class="separator">&bull;</span>
+                <button type="button" id="btnFeaturesNone" class="mc-btn-link">None</button>
+              </div>
+              <div class="mc-features-list" id="featuresList">
+                <!-- Overworld Features -->
+                <button type="button" class="mc-feat-btn active" data-type="village" title="Villages">
+                  <span class="mc-feat-icon feat-village"></span> Village
+                </button>
+                <button type="button" class="mc-feat-btn active" data-type="desert_pyramid" title="Desert Pyramids">
+                  <span class="mc-feat-icon feat-pyramid"></span> Pyramid
+                </button>
+                <button type="button" class="mc-feat-btn active" data-type="jungle_temple" title="Jungle Temples">
+                  <span class="mc-feat-icon feat-jungle"></span> Temple
+                </button>
+                <button type="button" class="mc-feat-btn active" data-type="swamp_hut" title="Swamp Witch Huts">
+                  <span class="mc-feat-icon feat-hut"></span> Witch Hut
+                </button>
+                <button type="button" class="mc-feat-btn active" data-type="pillager_outpost" title="Pillager Outposts">
+                  <span class="mc-feat-icon feat-outpost"></span> Outpost
+                </button>
+                <button type="button" class="mc-feat-btn active" data-type="ocean_monument" title="Ocean Monuments">
+                  <span class="mc-feat-icon feat-monument"></span> Monument
+                </button>
+                <button type="button" class="mc-feat-btn active" data-type="woodland_mansion" title="Woodland Mansions">
+                  <span class="mc-feat-icon feat-mansion"></span> Mansion
+                </button>
+                <button type="button" class="mc-feat-btn active" data-type="shipwreck" title="Shipwrecks">
+                  <span class="mc-feat-icon feat-shipwreck"></span> Shipwreck
+                </button>
+                <button type="button" class="mc-feat-btn active" data-type="ruined_portal" title="Ruined Portals">
+                  <span class="mc-feat-icon feat-portal"></span> Portal
+                </button>
+                <button type="button" class="mc-feat-btn active" data-type="stronghold" title="Strongholds">
+                  <span class="mc-feat-icon feat-stronghold"></span> Stronghold
+                </button>
+                <button type="button" class="mc-feat-btn active" data-type="slime_chunk" title="Slime Chunks">
+                  <span class="mc-feat-icon feat-slime"></span> Slime
+                </button>
+                <!-- Nether Features (Shown in Nether mode) -->
+                <button type="button" class="mc-feat-btn feat-nether hidden active" data-type="fortress" title="Nether Fortresses">
+                  <span class="mc-feat-icon feat-fortress"></span> Fortress
+                </button>
+                <button type="button" class="mc-feat-btn feat-nether hidden active" data-type="bastion" title="Bastion Remnants">
+                  <span class="mc-feat-icon feat-bastion"></span> Bastion
+                </button>
+                <button type="button" class="mc-feat-btn feat-nether hidden active" data-type="ruined_portal_n" title="Ruined Portals (Nether)">
+                  <span class="mc-feat-icon feat-portal-n"></span> Nether Portal
+                </button>
+              </div>
+            </div>
+
+            <!-- Canvas Container -->
+            <div class="mc-canvas-wrapper" id="canvasWrapper">
+              <!-- 2D Biome Map Canvas (Active by default) -->
+              <canvas id="map2dCanvas"></canvas>
+
+              <!-- 3D WebGL Canvas (Preserved, hidden in 2D mode) -->
+              <canvas id="terrainCanvas" class="hidden"></canvas>
+
+              <div id="canvasOverlayLoading" class="mc-canvas-overlay hidden">
+                <div class="mc-spinner"></div>
+                <span>Generating Biome Map...</span>
+              </div>
+
+              <!-- Compass HUD Widget (Interactive North / South Indicator for 3D) -->
+              <div id="compassHud" class="mc-compass-hud hidden" title="Klik untuk menghadap ke Utara (North)">
+                <div class="mc-compass-dial" id="compassDial">
+                  <div class="mc-compass-needle mc-needle-north"><span>N</span></div>
+                  <div class="mc-compass-needle mc-needle-south"><span>S</span></div>
+                  <div class="mc-compass-center-dot"></div>
+                </div>
+                <div class="mc-compass-label" id="compassLabel">North (-Z)</div>
+              </div>
+            </div>
+
+            <!-- Go to Coordinates Quick Bar -->
+            <div class="mc-coords-bar" id="coordsBar">
+              <span class="mc-coords-title">Go to:</span>
+              <div class="mc-coords-inputs">
+                <label for="inputCoordX">X:</label>
+                <input type="number" id="inputCoordX" class="mc-input mc-input-coord" value="0" step="16" />
+                <label for="inputCoordZ">Z:</label>
+                <input type="number" id="inputCoordZ" class="mc-input mc-input-coord" value="0" step="16" />
+                <button type="button" id="btnGoCoords" class="mc-btn mc-btn-sm mc-btn-highlight">Go</button>
+              </div>
+            </div>
+
+            <p class="mc-preview-controls-hint" id="previewControlsHint">
+              <span class="mc-hint-icon">🎮</span> Klik &amp; drag mouse untuk pan peta, scroll untuk zoom, arahkan kursor untuk inspeksi koordinat &amp; bioma.
+            </p>
+          </div>
+
+          <!-- 3. Section: Generate Structures Toggle Button -->
+          <div class="form-group">
+            <label class="mc-label">World Structures</label>
+            <button type="button" id="btnStructures" class="mc-btn mc-btn-toggle" aria-label="Toggle Generate Structures">
+              Generate Structures: <span id="structuresText">ON</span>
+            </button>
+            <p class="mc-helper-desc" id="structuresDesc">
+              Villages, dungeons, mineshafts, etc. will spawn.
+            </p>
+          </div>
+
+          <!-- 4. Section: Overworld Terrain Generation -->
+          <div class="form-group">
+            <label class="mc-label">Overworld Terrain (Region .MCA)</label>
+            <button type="button" id="btnTerrain" class="mc-btn mc-btn-toggle" aria-label="Toggle Overworld Terrain">
+              Spawn Terrain: <span id="terrainText">Rolling Plains (Hills 3x3)</span>
+            </button>
+            <p class="mc-helper-desc" id="terrainDesc">
+              3-Octave Perlin noise hills (Y=62..72) with bedrock, stone, dirt &amp; grass.
+            </p>
+          </div>
+
         </div>
 
-        <p class="mc-preview-controls-hint">
-          <span class="mc-hint-icon">🎮</span> Gunakan klik kiri drag untuk rotasi, scroll untuk zoom, klik kanan drag untuk pan
-        </p>
       </div>
 
       <!-- Status & Progress Feedback Banner -->
@@ -226,7 +353,6 @@
   <script src="js/core/anvil.js"></script>
 
   <!-- World Generation & Math -->
-  <script type="module" src="js/wasm/cubiomes_adapter.js"></script>
   <script src="js/generator/noise.js"></script>
   <script src="js/generator/biome.js"></script>
   <script src="js/generator/tree.js"></script>
@@ -234,6 +360,15 @@
   <script src="js/generator/flora.js"></script>
   <script src="js/generator/terrain.js"></script>
   <script src="js/generator/chunk.js"></script>
+
+  <!-- Pure JS Cubiomes 1.16 Engine & 2D Biome Map -->
+  <script src="js/cubiomes/biomes.js"></script>
+  <script src="js/cubiomes/noise.js"></script>
+  <script src="js/cubiomes/layers.js"></script>
+  <script src="js/cubiomes/generator.js"></script>
+  <script src="js/cubiomes/nether.js"></script>
+  <script src="js/cubiomes/structures.js"></script>
+  <script src="js/viewer/map2d.js"></script>
 
   <!-- 3D WebGL Viewer -->
   <script src="js/viewer/terrain3d.js"></script>

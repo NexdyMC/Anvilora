@@ -35,31 +35,42 @@
     nbt.tagString('Status', 'full');
     nbt.tagInt('DataVersion', 2567);
 
-    // Compute surface heights for all 256 (16x16) columns in this chunk
+    // Compute surface heights and column biomes for all 256 (16x16) columns in this chunk
     const heights = new Uint8Array(256);
-    for (let z = 0; z < 16; z++) {
-      for (let x = 0; x < 16; x++) {
-        const wx = cx * 16 + x;
-        const wz = cz * 16 + z;
-        heights[z * 16 + x] = isFlat ? 64 : (terrain ? terrain.getHeight(wx, wz) : 64);
+    const columnSurfs = new Array(256);
+
+    // Pre-sample 4x4 biomes at scale 1:4 (quart coordinates) for this chunk
+    const quartBiomes = new Int32Array(16);
+    for (let bz = 0; bz < 4; bz++) {
+      const wz = cz * 16 + bz * 4 + 2;
+      for (let bx = 0; bx < 4; bx++) {
+        const wx = cx * 16 + bx * 4 + 2;
+        quartBiomes[bz * 4 + bx] = biomeGen ? biomeGen.getBiomeAt(wx, wz, 64) : 1;
       }
     }
 
     // Biomes: 1024 ints (4x4x64 grid in Z, then X, then Y layout: idx = by*16 + bz*4 + bx)
     const biomes = new Int32Array(1024);
     for (let by = 0; by < 64; by++) {
-      const wy = by * 4;
-      for (let bz = 0; bz < 4; bz++) {
-        const wz = cz * 16 + bz * 4 + 2;
-        for (let bx = 0; bx < 4; bx++) {
-          const wx = cx * 16 + bx * 4 + 2;
-          const h = heights[(bz * 4 + 2) * 16 + (bx * 4 + 2)] || 64;
-          const bId = biomeGen ? biomeGen.getBiomeAt(wx, wz, h) : 1;
-          biomes[by * 16 + bz * 4 + bx] = bId;
-        }
-      }
+      biomes.set(quartBiomes, by * 16);
     }
     nbt.tagIntArray('Biomes', biomes);
+
+    // Pre-calculate heights and surface configurations for all 256 columns
+    for (let z = 0; z < 16; z++) {
+      const qz = Math.floor(z / 4);
+      for (let x = 0; x < 16; x++) {
+        const qx = Math.floor(x / 4);
+        const idx = z * 16 + x;
+        const wx = cx * 16 + x;
+        const wz = cz * 16 + z;
+        const h = isFlat ? 64 : (terrain ? terrain.getHeight(wx, wz) : 64);
+        heights[idx] = h;
+
+        const bId = quartBiomes[qz * 4 + qx];
+        columnSurfs[idx] = biomeGen ? biomeGen.getSurfaceConfig(bId, h) : { topBlockId: (h >= 63 ? 3 : 2), subBlockId: 2, subDepth: 3 };
+      }
+    }
 
     // Number of active sections: Y=0..4 (Y=0 s/d 79)
     const numSections = 5;
@@ -81,11 +92,9 @@
         const worldY = baseWorldY + localY;
         for (let z = 0; z < 16; z++) {
           for (let x = 0; x < 16; x++) {
-            const wx = cx * 16 + x;
-            const wz = cz * 16 + z;
-            const h = heights[z * 16 + x];
-            const bId = biomeGen ? biomeGen.getBiomeAt(wx, wz, h) : 1;
-            const surf = biomeGen ? biomeGen.getSurfaceConfig(bId, h) : { topBlockId: (h >= 63 ? 3 : 2), subBlockId: 2, subDepth: 3 };
+            const colIdx = z * 16 + x;
+            const h = heights[colIdx];
+            const surf = columnSurfs[colIdx];
 
             let blockId = 0; // 0 = air
 
@@ -103,7 +112,7 @@
               blockId = 0; // 0 = air
             }
 
-            secBlocks[localY * 256 + z * 16 + x] = blockId;
+            secBlocks[localY * 256 + colIdx] = blockId;
             usedPalette.add(blockId);
           }
         }

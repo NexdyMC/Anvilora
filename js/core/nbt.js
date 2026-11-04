@@ -216,11 +216,13 @@
     nbt.tagInt('version', 19133); // Minecraft Anvil save format version
 
     // GameRules compound
+    const gr = options.gameRules || {};
     nbt.startCompound('GameRules');
-    nbt.tagString('doDaylightCycle', 'true');
-    nbt.tagString('doMobSpawning', 'true');
-    nbt.tagString('keepInventory', 'false');
-    nbt.tagString('mobGriefing', 'true');
+    nbt.tagString('doDaylightCycle', gr.doDaylightCycle !== false ? 'true' : 'false');
+    nbt.tagString('doMobSpawning', gr.doMobSpawning !== false ? 'true' : 'false');
+    nbt.tagString('doWeatherCycle', gr.doWeatherCycle !== false ? 'true' : 'false');
+    nbt.tagString('keepInventory', gr.keepInventory ? 'true' : 'false');
+    nbt.tagString('mobGriefing', gr.mobGriefing !== false ? 'true' : 'false');
     nbt.endCompound();
 
     // Version Compound (Critical to prevent "Unknown Version" warning)

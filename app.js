@@ -42,6 +42,38 @@
     terrainText: document.getElementById('terrainText'),
     terrainDesc: document.getElementById('terrainDesc'),
 
+    // GameRules Buttons
+    btnKeepInventory: document.getElementById('btnKeepInventory'),
+    keepInventoryText: document.getElementById('keepInventoryText'),
+    btnDaylightCycle: document.getElementById('daylightCycleText')?.parentElement,
+    daylightCycleText: document.getElementById('daylightCycleText'),
+    btnMobGriefing: document.getElementById('mobGriefingText')?.parentElement,
+    mobGriefingText: document.getElementById('mobGriefingText'),
+    btnWeatherCycle: document.getElementById('weatherCycleText')?.parentElement,
+    weatherCycleText: document.getElementById('weatherCycleText'),
+
+    // 2D Map & Preview Elements
+    map2dCanvas: document.getElementById('map2dCanvas'),
+    btnDimension: document.getElementById('btnDimension'),
+    dimensionText: document.getElementById('dimensionText'),
+    btnFeaturesAll: document.getElementById('btnFeaturesAll'),
+    btnFeaturesNone: document.getElementById('btnFeaturesNone'),
+    featuresBar: document.getElementById('featuresBar'),
+    inputCoordX: document.getElementById('inputCoordX'),
+    inputCoordZ: document.getElementById('inputCoordZ'),
+    btnGoCoords: document.getElementById('btnGoCoords'),
+
+    btnMapZoomIn: document.getElementById('btnMapZoomIn'),
+    btnMapZoomOut: document.getElementById('btnMapZoomOut'),
+    btnMapCenterSpawn: document.getElementById('btnMapCenterSpawn'),
+    btnToggleGrid: document.getElementById('btnToggleGrid'),
+    gridText: document.getElementById('gridText'),
+    btnSwitchView: document.getElementById('btnSwitchView'),
+    viewModeText: document.getElementById('viewModeText'),
+    previewTitle: document.getElementById('previewTitle'),
+    previewControlsHint: document.getElementById('previewControlsHint'),
+    biomeBadge: document.getElementById('biomeBadge'),
+
     // 3D Preview Elements
     terrainCanvas: document.getElementById('terrainCanvas'),
     canvasWrapper: document.getElementById('canvasWrapper'),
@@ -124,10 +156,22 @@
     difficultyIndex: 2,     // Default: Normal
     allowCheats: false,     // Default: OFF
     generateStructures: true, // Default: ON
-    terrainModeIndex: 0     // Default: Rolling Plains (Hills 3x3)
+    terrainModeIndex: 0,    // Default: Rolling Plains (Hills 3x3)
+    dimension: 'overworld', // 'overworld' | 'nether'
+    gameRules: {
+      keepInventory: false,
+      doDaylightCycle: true,
+      mobGriefing: true,
+      doWeatherCycle: true
+    }
   };
 
   let terrainViewer = null;
+  let mapViewer2D = null;
+  let cubiomesGen = null;
+  let netherGen = null;
+  let structureFinder = null;
+  let currentViewMode = '2d'; // Default active view: 2D Biome Map
   let seedDebounceTimer = null;
 
   // =========================================================================
@@ -194,6 +238,48 @@
     DOM.terrainDesc.textContent = terrain.desc;
   }
 
+  function updateGameRulesUI() {
+    if (DOM.keepInventoryText) {
+      DOM.keepInventoryText.textContent = state.gameRules.keepInventory ? 'ON' : 'OFF';
+      DOM.btnKeepInventory?.classList.toggle('active', state.gameRules.keepInventory);
+    }
+    if (DOM.daylightCycleText) {
+      DOM.daylightCycleText.textContent = state.gameRules.doDaylightCycle ? 'ON' : 'OFF';
+      DOM.btnDaylightCycle?.classList.toggle('active', state.gameRules.doDaylightCycle);
+    }
+    if (DOM.mobGriefingText) {
+      DOM.mobGriefingText.textContent = state.gameRules.mobGriefing ? 'ON' : 'OFF';
+      DOM.btnMobGriefing?.classList.toggle('active', state.gameRules.mobGriefing);
+    }
+    if (DOM.weatherCycleText) {
+      DOM.weatherCycleText.textContent = state.gameRules.doWeatherCycle ? 'ON' : 'OFF';
+      DOM.btnWeatherCycle?.classList.toggle('active', state.gameRules.doWeatherCycle);
+    }
+  }
+
+  function updateDimensionUI() {
+    if (!DOM.dimensionText) return;
+    const isOverworld = state.dimension === 'overworld';
+    DOM.dimensionText.textContent = isOverworld ? 'Overworld' : 'The Nether';
+
+    if (DOM.btnDimension) {
+      DOM.btnDimension.style.backgroundColor = isOverworld ? '#2d4a2d' : '#5b2121';
+      DOM.btnDimension.style.borderColor = isOverworld ? '#4ade80' : '#8b3a3a';
+    }
+
+    // Toggle features visibility in Features Bar
+    const overworldFeats = document.querySelectorAll('.mc-feat-btn:not(.feat-nether)');
+    const netherFeats = document.querySelectorAll('.mc-feat-btn.feat-nether');
+
+    overworldFeats.forEach(el => el.classList.toggle('hidden', !isOverworld));
+    netherFeats.forEach(el => el.classList.toggle('hidden', isOverworld));
+
+    if (mapViewer2D) {
+      const activeGen = isOverworld ? cubiomesGen : netherGen;
+      mapViewer2D.setDimension(state.dimension, activeGen);
+    }
+  }
+
   function setStatus(message, type = 'info') {
     DOM.statusBanner.className = 'mc-status-banner';
     DOM.statusText.textContent = message;
@@ -245,8 +331,175 @@
   });
 
   const handleSeedChange = () => {
-    if (terrainViewer) terrainViewer.updateTerrain();
+    const seed = window.parseMinecraftSeed(DOM.worldSeed.value);
+    if (cubiomesGen) {
+      cubiomesGen.setSeed(seed);
+    }
+    if (netherGen) {
+      netherGen.setSeed(seed);
+    }
+    if (structureFinder) {
+      structureFinder.setSeed(seed);
+    }
+    if (mapViewer2D && currentViewMode === '2d') {
+      mapViewer2D.render();
+    }
+    if (terrainViewer && currentViewMode === '3d') {
+      terrainViewer.updateTerrain();
+    }
   };
+
+  function switchView(mode) {
+    currentViewMode = mode;
+    const is2D = mode === '2d';
+
+    if (DOM.viewModeText) DOM.viewModeText.textContent = is2D ? '2D Map' : '3D Voxel';
+    if (DOM.previewTitle) {
+      DOM.previewTitle.innerHTML = is2D
+        ? '<span class="mc-icon">🗺️</span> 2D Biome Map (Chunkbase 1.16)'
+        : '<span class="mc-icon">🧊</span> 3D World Terrain Preview (Interactive)';
+    }
+
+    if (DOM.map2dCanvas) DOM.map2dCanvas.classList.toggle('hidden', !is2D);
+    if (DOM.terrainCanvas) DOM.terrainCanvas.classList.toggle('hidden', is2D);
+
+    if (DOM.btnMapZoomIn) DOM.btnMapZoomIn.classList.toggle('hidden', !is2D);
+    if (DOM.btnMapZoomOut) DOM.btnMapZoomOut.classList.toggle('hidden', !is2D);
+    if (DOM.btnMapCenterSpawn) DOM.btnMapCenterSpawn.classList.toggle('hidden', !is2D);
+    if (DOM.btnToggleGrid) DOM.btnToggleGrid.classList.toggle('hidden', !is2D);
+
+    if (DOM.btnResetCamera) DOM.btnResetCamera.classList.toggle('hidden', is2D);
+    if (DOM.btnToggleMeshMode) DOM.btnToggleMeshMode.classList.toggle('hidden', is2D);
+    if (DOM.btnToggleXRay) DOM.btnToggleXRay.classList.toggle('hidden', is2D);
+
+    const compassHud = document.getElementById('compassHud');
+    if (compassHud) compassHud.classList.toggle('hidden', is2D);
+
+    if (DOM.previewControlsHint) {
+      DOM.previewControlsHint.innerHTML = is2D
+        ? '<span class="mc-hint-icon">🎮</span> Klik &amp; drag mouse untuk pan peta, scroll untuk zoom, arahkan kursor untuk inspeksi koordinat &amp; bioma.'
+        : '<span class="mc-hint-icon">🎮</span> Gunakan klik kiri drag untuk rotasi, scroll untuk zoom, klik kanan drag untuk pan';
+    }
+
+    if (is2D) {
+      if (mapViewer2D) {
+        mapViewer2D.resize();
+        mapViewer2D.render();
+      }
+    } else {
+      if (terrainViewer) {
+        terrainViewer.updateTerrain();
+      }
+    }
+  }
+
+  if (DOM.btnSwitchView) {
+    DOM.btnSwitchView.addEventListener('click', () => {
+      switchView(currentViewMode === '2d' ? '3d' : '2d');
+    });
+  }
+
+  if (DOM.btnMapZoomIn) {
+    DOM.btnMapZoomIn.addEventListener('click', () => {
+      if (mapViewer2D) mapViewer2D.setZoom(mapViewer2D.zoom * 1.35);
+    });
+  }
+
+  if (DOM.btnMapZoomOut) {
+    DOM.btnMapZoomOut.addEventListener('click', () => {
+      if (mapViewer2D) mapViewer2D.setZoom(mapViewer2D.zoom / 1.35);
+    });
+  }
+
+  if (DOM.btnMapCenterSpawn) {
+    DOM.btnMapCenterSpawn.addEventListener('click', () => {
+      if (mapViewer2D) mapViewer2D.setCenter(8, 8);
+    });
+  }
+
+  if (DOM.btnToggleGrid) {
+    DOM.btnToggleGrid.addEventListener('click', () => {
+      if (mapViewer2D) {
+        const enabled = mapViewer2D.toggleGrid();
+        if (DOM.gridText) DOM.gridText.textContent = enabled ? 'ON' : 'OFF';
+      }
+    });
+  }
+
+  // Dimension Switch Event
+  if (DOM.btnDimension) {
+    DOM.btnDimension.addEventListener('click', () => {
+      state.dimension = (state.dimension === 'overworld') ? 'nether' : 'overworld';
+      updateDimensionUI();
+    });
+  }
+
+  // Features Bar Click Events
+  const featButtons = document.querySelectorAll('.mc-feat-btn');
+  featButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const typeKey = btn.dataset.type;
+      const willBeActive = !btn.classList.contains('active');
+      btn.classList.toggle('active', willBeActive);
+      if (mapViewer2D) {
+        mapViewer2D.toggleStructureType(typeKey, willBeActive);
+      }
+    });
+  });
+
+  if (DOM.btnFeaturesAll) {
+    DOM.btnFeaturesAll.addEventListener('click', () => {
+      featButtons.forEach(b => b.classList.add('active'));
+      if (mapViewer2D) mapViewer2D.setAllStructuresEnabled(true);
+    });
+  }
+
+  if (DOM.btnFeaturesNone) {
+    DOM.btnFeaturesNone.addEventListener('click', () => {
+      featButtons.forEach(b => b.classList.remove('active'));
+      if (mapViewer2D) mapViewer2D.setAllStructuresEnabled(false);
+    });
+  }
+
+  // Go to Coordinates Event
+  if (DOM.btnGoCoords) {
+    DOM.btnGoCoords.addEventListener('click', () => {
+      const x = parseInt(DOM.inputCoordX?.value, 10) || 0;
+      const z = parseInt(DOM.inputCoordZ?.value, 10) || 0;
+      if (mapViewer2D) {
+        mapViewer2D.goToCoordinates(x, z);
+      }
+    });
+  }
+
+  // GameRules Toggle Events
+  if (DOM.btnKeepInventory) {
+    DOM.btnKeepInventory.addEventListener('click', () => {
+      state.gameRules.keepInventory = !state.gameRules.keepInventory;
+      updateGameRulesUI();
+    });
+  }
+
+  if (DOM.btnDaylightCycle) {
+    DOM.btnDaylightCycle.addEventListener('click', () => {
+      state.gameRules.doDaylightCycle = !state.gameRules.doDaylightCycle;
+      updateGameRulesUI();
+    });
+  }
+
+  if (DOM.btnMobGriefing) {
+    DOM.btnMobGriefing.addEventListener('click', () => {
+      state.gameRules.mobGriefing = !state.gameRules.mobGriefing;
+      updateGameRulesUI();
+    });
+  }
+
+  if (DOM.btnWeatherCycle) {
+    DOM.btnWeatherCycle.addEventListener('click', () => {
+      state.gameRules.doWeatherCycle = !state.gameRules.doWeatherCycle;
+      updateGameRulesUI();
+    });
+  }
 
   DOM.worldSeed.addEventListener('input', () => {
     clearTimeout(seedDebounceTimer);
@@ -341,11 +594,11 @@
   async function handleCreateWorld() {
     // Check prerequisites
     if (typeof window.pako === 'undefined') {
-      setStatus('Error: Pako library failed to load from CDN.', 'error');
+      setStatus('Error: Pako library failed to load.', 'error');
       return;
     }
     if (typeof window.JSZip === 'undefined') {
-      setStatus('Error: JSZip library failed to load from CDN.', 'error');
+      setStatus('Error: JSZip library failed to load.', 'error');
       return;
     }
 
@@ -443,7 +696,8 @@
         hasRegion: activeTerrain.hasRegion,
         spawnX: spawnX,
         spawnY: spawnY,
-        spawnZ: spawnZ
+        spawnZ: spawnZ,
+        gameRules: state.gameRules
       });
 
       setStatus('Compressing level.dat with GZIP...', 'loading');
@@ -510,8 +764,38 @@
   updateCheatsUI();
   updateStructuresUI();
   updateTerrainUI();
+  updateGameRulesUI();
+  updateDimensionUI();
 
-  // Initialize 3D WebGL Terrain Preview
+  // Initialize Pure JS Cubiomes 1.16 GenLayer Engine, Nether Engine, & Structure Finder
+  if (window.CubiomesGenerator) {
+    const initSeed = window.parseMinecraftSeed(DOM.worldSeed.value);
+    cubiomesGen = new window.CubiomesGenerator(initSeed);
+    if (window.NetherGenerator) {
+      netherGen = new window.NetherGenerator(initSeed);
+    }
+    if (window.StructureFinder) {
+      structureFinder = new window.StructureFinder(initSeed);
+    }
+
+    if (window.BiomeMap2D && DOM.map2dCanvas) {
+      mapViewer2D = new window.BiomeMap2D(DOM.map2dCanvas, cubiomesGen, structureFinder);
+
+      mapViewer2D.onHover((info) => {
+        if (DOM.previewElevation && currentViewMode === '2d') {
+          let structText = '';
+          if (info.hoveredStructure) {
+            structText = ` &bull; <span style="color:#ffff55;font-weight:bold;">🏰 ${info.hoveredStructure.name}</span>`;
+          }
+          DOM.previewElevation.innerHTML = `Cursor: X: ${info.bx}, Z: ${info.bz} &bull; Chunk: [${info.chunkX}, ${info.chunkZ}] &bull; Dist: ${info.distanceFromSpawn}m &bull; <span class="mc-biome-badge" style="background-color: ${info.biomeColor}">${info.biomeName} (${info.biomeId})</span>${structText}`;
+        }
+      });
+      // Initial render for 2D Map
+      mapViewer2D.render();
+    }
+  }
+
+  // Initialize 3D WebGL Terrain Preview (preserved)
   if (window.TerrainViewer3D) {
     terrainViewer = new window.TerrainViewer3D({
       canvas: DOM.terrainCanvas,
@@ -525,15 +809,6 @@
       getSeedFunc: () => window.parseMinecraftSeed(DOM.worldSeed.value),
       getTerrainModeFunc: () => TERRAIN_MODES[state.terrainModeIndex].generatorType
     });
-  }
-
-  // Auto-refresh terrain when Cubiomes 1.16 WASM engine completes loading
-  if (typeof window.initCubiomesWasm === 'function') {
-    window.initCubiomesWasm().then(() => {
-      if (terrainViewer) {
-        terrainViewer.updateTerrain();
-      }
-    }).catch(() => {});
   }
 
 })();

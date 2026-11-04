@@ -14,10 +14,22 @@ WorldGenerator/
 ├── structure.md                 (Dokumentasi kerangka file & modul)
 ├── readme.md                    (Dokumentasi umum & spesifikasi proyek)
 │
+├── assets/                      [ASET VISUAL & MEDIA]
+│   ├── images/
+│   │   └── wallpaper.jpg        (Pixel art twilight & cherry blossom background)
+│   └── icons/
+│       └── features.webp        (Icon pratinjau fitur)
+│
 ├── fonts/                       [ASET TIPOGRAFI LOKAL]
 │   └── Minecraft.otf            (Font pixel otentik Minecraft Java Edition)
 │
 └── js/
+    ├── libs/                    [PUSTAKA EKSTERNAL OFFLINE]
+    │   ├── pako.min.js          (Zlib / GZIP compression library)
+    │   ├── jszip.min.js         (Client-side ZIP archive bundler)
+    │   ├── three.min.js         (3D WebGL render engine)
+    │   └── OrbitControls.js     (Three.js interactive mouse controls)
+    │
     ├── core/                    [FONDASI BINER MINECRAFT]
     │   ├── nbt.js               (Class NBTWriter & penyusun berkas level.dat)
     │   ├── anvil.js             (Class RegionWriter: penyusun header 8KB & berkas r.0.0.mca)
@@ -52,7 +64,18 @@ WorldGenerator/
 
 ---
 
-### 3. Direktori `js/core/` (Fondasi Biner Minecraft)
+### 3. Direktori `js/libs/` (Pustaka Eksternal Offline)
+
+Menyimpan semua library eksternal secara lokal di folder proyek tanpa bergantung pada CDN internet:
+
+* **`js/libs/pako.min.js`**: Engine kompresi biner ZLIB / GZIP (Deflate).
+* **`js/libs/jszip.min.js`**: Bundler arsip berkas `.zip` di sisi peramban (*client-side*).
+* **`js/libs/three.min.js`**: Pustaka 3D WebGL untuk merender model voxel dunia Minecraft.
+* **`js/libs/OrbitControls.js`**: Kontrol kamera mouse interaktif 360° untuk Three.js.
+
+---
+
+### 4. Direktori `js/core/` (Fondasi Biner Minecraft)
 
 Modul-modul pada folder ini menangani spesifikasi biner standar Minecraft Java Edition secara presisi:
 
